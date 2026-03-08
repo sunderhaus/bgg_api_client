@@ -79,8 +79,20 @@ defmodule BggApiClient.Thing do
       min_players:    xpath(item, ~x"minplayers/@value"i),
       max_players:    xpath(item, ~x"maxplayers/@value"i),
       playing_time:   xpath(item, ~x"playingtime/@value"i),
+      links:          parse_thing_links(item),
       stats:          parse_thing_stats(item)
     }
+  end
+
+  defp parse_thing_links(item) do
+    xpath(item, ~x"link"l)
+    |> Enum.map(fn link ->
+      %{
+        type:  xpath(link, ~x"@type"s),
+        id:    xpath(link, ~x"@id"s),
+        value: xpath(link, ~x"@value"s)
+      }
+    end)
   end
 
   defp parse_thing_stats(item) do
