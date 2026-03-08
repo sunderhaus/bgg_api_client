@@ -88,9 +88,10 @@ defmodule BggApiClient.Thing do
     xpath(item, ~x"link"l)
     |> Enum.map(fn link ->
       %{
-        type:  xpath(link, ~x"@type"s),
-        id:    xpath(link, ~x"@id"s),
-        value: xpath(link, ~x"@value"s)
+        type:    xpath(link, ~x"@type"s),
+        id:      xpath(link, ~x"@id"s),
+        value:   xpath(link, ~x"@value"s),
+        inbound: xpath(link, ~x"@inbound"s)
       }
     end)
   end
