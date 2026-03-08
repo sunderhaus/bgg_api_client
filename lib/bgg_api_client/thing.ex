@@ -11,7 +11,8 @@ defmodule BggApiClient.Thing do
   - rpgissue
   """
 
-  require Logger
+  import BggApiClient.Params
+  import SweetXml
 
   @doc """
   Retrieves one or more things from the BGG API.
@@ -45,7 +46,10 @@ defmodule BggApiClient.Thing do
     params = [id: ids_param]
     params = add_optional_params(params, opts)
     
-    BggApiClient.Client.get("/thing", params)
+    case BggApiClient.Client.get("/thing", params) do
+      {:ok, doc} -> {:ok, parse_things(doc)}
+      error -> error
+    end
   end
 
   defp format_ids(id) when is_integer(id) do
@@ -58,6 +62,42 @@ defmodule BggApiClient.Thing do
     |> Enum.join(",")
   end
 
+  defp parse_things(doc) do
+    xpath(doc, ~x"//item"l)
+    |> Enum.map(&parse_thing/1)
+  end
+
+  defp parse_thing(item) do
+    %{
+      id:             xpath(item, ~x"@id"s),
+      type:           xpath(item, ~x"@type"s),
+      name:           xpath(item, ~x"name[@type='primary']/@value"s),
+      year_published: xpath(item, ~x"yearpublished/@value"s),
+      description:    xpath(item, ~x"description/text()"s),
+      image:          xpath(item, ~x"image/text()"s),
+      thumbnail:      xpath(item, ~x"thumbnail/text()"s),
+      min_players:    xpath(item, ~x"minplayers/@value"i),
+      max_players:    xpath(item, ~x"maxplayers/@value"i),
+      playing_time:   xpath(item, ~x"playingtime/@value"i),
+      stats:          parse_thing_stats(item)
+    }
+  end
+
+  defp parse_thing_stats(item) do
+    case xpath(item, ~x"statistics/ratings/average/@value"s) do
+      "" ->
+        nil
+
+      _ ->
+        %{
+          avg_rating:  xpath(item, ~x"statistics/ratings/average/@value"s),
+          bayes_avg:   xpath(item, ~x"statistics/ratings/bayesaverage/@value"s),
+          num_ratings: xpath(item, ~x"statistics/ratings/usersrated/@value"i),
+          rank:        xpath(item, ~x"statistics/ratings/ranks/rank[@name='boardgame']/@value"s)
+        }
+    end
+  end
+
   defp add_optional_params(params, opts) do
     params
     |> add_param(:type, Keyword.get(opts, :type))
@@ -68,8 +108,4 @@ defmodule BggApiClient.Thing do
     |> add_param(:rss, Keyword.get(opts, :rss))
   end
 
-  defp add_param(params, _key, nil), do: params
-  defp add_param(params, _key, false), do: params
-  defp add_param(params, key, true), do: params ++ [{key, 1}]
-  defp add_param(params, key, value), do: params ++ [{key, value}]
 end

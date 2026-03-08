@@ -1,9 +1,12 @@
 defmodule BggApiClient.Plays do
   @moduledoc """
   Functions for interacting with the BGG API Plays endpoint.
-  
+
   Retrieves play records for users or games.
   """
+
+  import BggApiClient.Params
+  import SweetXml
 
   @doc """
   Retrieves play records from the BGG API.
@@ -42,7 +45,29 @@ defmodule BggApiClient.Plays do
     params = add_param(params, :username, username)
     params = add_optional_params(params, opts)
     
-    BggApiClient.Client.get("/plays", params)
+    case BggApiClient.Client.get("/plays", params) do
+      {:ok, doc} -> {:ok, parse_plays(doc)}
+      error -> error
+    end
+  end
+
+  defp parse_plays(doc) do
+    %{
+      total: xpath(doc, ~x"/plays/@total"i),
+      page:  xpath(doc, ~x"/plays/@page"i),
+      plays:
+        xpath(doc, ~x"//play"l)
+        |> Enum.map(fn play ->
+          %{
+            id:        xpath(play, ~x"@id"s),
+            date:      xpath(play, ~x"@date"s),
+            quantity:  xpath(play, ~x"@quantity"i),
+            length:    xpath(play, ~x"@length"i),
+            game_name: xpath(play, ~x"item/@name"s),
+            game_id:   xpath(play, ~x"item/@objectid"s)
+          }
+        end)
+    }
   end
 
   defp add_optional_params(params, opts) do
@@ -54,8 +79,4 @@ defmodule BggApiClient.Plays do
     |> add_param(:stats, Keyword.get(opts, :stats))
   end
 
-  defp add_param(params, _key, nil), do: params
-  defp add_param(params, _key, false), do: params
-  defp add_param(params, key, true), do: params ++ [{key, 1}]
-  defp add_param(params, key, value), do: params ++ [{key, value}]
 end
