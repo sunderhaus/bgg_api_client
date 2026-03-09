@@ -44,6 +44,8 @@ defmodule BggApiClient.Client do
   end
 
   defp do_get(path, params, retries_remaining) do
+    BggApiClient.RateLimiter.acquire()
+
     client()
     |> Tesla.get(path, query: params)
     |> handle_response(path, params, retries_remaining)

@@ -47,8 +47,21 @@ config :bgg_api_client, api_token: "your_token_here"
 
 **Optional settings:**
 ```elixir
-# Retry delay in ms when BGG rate-limits or queues a request (default: 5000)
+# Minimum delay in ms between outbound BGG API requests (default: 5000)
 config :bgg_api_client, rate_limit_delay: 5000
+```
+
+### OTP application
+
+`bgg_api_client` starts its own OTP application, which supervises a `RateLimiter` GenServer that
+enforces the delay between requests. This starts automatically when the library is listed as a
+dependency — no explicit setup is required in your supervision tree.
+
+**In tests**, the 5-second delay will slow your suite significantly. Disable it in
+`config/test.exs`:
+
+```elixir
+config :bgg_api_client, rate_limit_delay: 0
 ```
 
 ## Usage
