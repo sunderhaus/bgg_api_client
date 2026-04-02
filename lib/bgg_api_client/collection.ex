@@ -137,22 +137,25 @@ defmodule BggApiClient.Collection do
   end
 
   # BGG omits the <stats> element entirely when stats=1 was not requested.
-  # We detect its absence by checking whether minplayers (always a positive
-  # integer when present) comes back as an empty string.
+  defp safe_integer(""), do: nil
+  defp safe_integer(str), do: String.to_integer(str)
+
+  # BGG omits the <stats> element entirely when stats=1 was not requested.
+  # We detect its absence by checking whether the element exists at all.
   defp parse_item_stats(item) do
-    case xpath(item, ~x"stats/@minplayers"s) do
-      "" ->
+    case xpath(item, ~x"stats"l) do
+      [] ->
         nil
 
       _ ->
         %{
-          min_players:  xpath(item, ~x"stats/@minplayers"i),
-          max_players:  xpath(item, ~x"stats/@maxplayers"i),
-          playing_time: xpath(item, ~x"stats/@playingtime"i),
+          min_players:  safe_integer(xpath(item, ~x"stats/@minplayers"s)),
+          max_players:  safe_integer(xpath(item, ~x"stats/@maxplayers"s)),
+          playing_time: safe_integer(xpath(item, ~x"stats/@playingtime"s)),
           rating:       xpath(item, ~x"stats/rating/@value"s),
           bgg_avg:      xpath(item, ~x"stats/rating/average/@value"s),
           bgg_bayes:    xpath(item, ~x"stats/rating/bayesaverage/@value"s),
-          num_rated:    xpath(item, ~x"stats/rating/usersrated/@value"i),
+          num_rated:    safe_integer(xpath(item, ~x"stats/rating/usersrated/@value"s)),
           rank:         xpath(item, ~x"stats/rating/ranks/rank[@name='boardgame']/@value"s)
         }
     end

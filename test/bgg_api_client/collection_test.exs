@@ -179,6 +179,75 @@ defmodule BggApiClient.CollectionTest do
     end
   end
 
+  @item_with_empty_stats_xml ~s(<?xml version="1.0" encoding="utf-8"?>
+<items totalitems="1">
+  <item objecttype="thing" objectid="342942" subtype="boardgameexpansion" collid="99999">
+    <name sortindex="1">Gloomhaven: Forgotten Circles</name>
+    <yearpublished>2019</yearpublished>
+    <image>//cf.geekdo-images.com/thumb.jpg</image>
+    <thumbnail>//cf.geekdo-images.com/thumb_s.jpg</thumbnail>
+    <stats minplayers="" maxplayers="" minplaytime="" maxplaytime="" playingtime="" numowned="5000">
+      <rating value="N/A">
+        <usersrated value=""/>
+        <average value="N/A"/>
+        <bayesaverage value="N/A"/>
+        <ranks>
+          <rank type="subtype" id="1" name="boardgame" value="Not Ranked" bayesaverage="Not Ranked"/>
+        </ranks>
+      </rating>
+    </stats>
+    <status own="1" prevowned="0" fortrade="0" want="0" wanttoplay="0"
+            wanttobuy="0" wishlist="0" preordered="0"
+            lastmodified="2023-01-15 00:00:00"/>
+    <numplays>0</numplays>
+  </item>
+</items>)
+
+  describe "get/2 — stats with empty/missing integer attributes" do
+    test "returns nil for playingtime when attribute is empty string" do
+      mock(fn %{method: :get} -> %Tesla.Env{status: 200, body: @item_with_empty_stats_xml} end)
+
+      assert {:ok, [item]} = BggApiClient.Collection.get("testuser", stats: true)
+
+      assert item.stats.playing_time == nil
+    end
+
+    test "returns nil for min_players and max_players when attributes are empty strings" do
+      mock(fn %{method: :get} -> %Tesla.Env{status: 200, body: @item_with_empty_stats_xml} end)
+
+      assert {:ok, [item]} = BggApiClient.Collection.get("testuser", stats: true)
+
+      assert item.stats.min_players == nil
+      assert item.stats.max_players == nil
+    end
+
+    test "returns nil for num_rated when usersrated value attribute is empty string" do
+      mock(fn %{method: :get} -> %Tesla.Env{status: 200, body: @item_with_empty_stats_xml} end)
+
+      assert {:ok, [item]} = BggApiClient.Collection.get("testuser", stats: true)
+
+      assert item.stats.num_rated == nil
+    end
+
+    test "still returns non-integer stats fields when integer fields are empty" do
+      mock(fn %{method: :get} -> %Tesla.Env{status: 200, body: @item_with_empty_stats_xml} end)
+
+      assert {:ok, [item]} = BggApiClient.Collection.get("testuser", stats: true)
+
+      assert item.stats.rating == "N/A"
+      assert item.stats.bgg_avg == "N/A"
+      assert item.stats.rank == "Not Ranked"
+    end
+
+    test "stats struct is still returned (not nil) when stats element is present" do
+      mock(fn %{method: :get} -> %Tesla.Env{status: 200, body: @item_with_empty_stats_xml} end)
+
+      assert {:ok, [item]} = BggApiClient.Collection.get("testuser", stats: true)
+
+      assert is_map(item.stats)
+    end
+  end
+
   describe "get/2 — stats / rating filters" do
     test "sends stats as 1" do
       env = capture_request(stats: true)
