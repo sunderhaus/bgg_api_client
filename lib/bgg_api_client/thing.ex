@@ -76,13 +76,19 @@ defmodule BggApiClient.Thing do
       description:    xpath(item, ~x"description/text()"s),
       image:          xpath(item, ~x"image/text()"s),
       thumbnail:      xpath(item, ~x"thumbnail/text()"s),
-      min_players:    xpath(item, ~x"minplayers/@value"i),
-      max_players:    xpath(item, ~x"maxplayers/@value"i),
-      playing_time:   xpath(item, ~x"playingtime/@value"i),
+      min_players:    safe_integer(xpath(item, ~x"minplayers/@value"s)),
+      max_players:    safe_integer(xpath(item, ~x"maxplayers/@value"s)),
+      playing_time:   safe_integer(xpath(item, ~x"playingtime/@value"s)),
       links:          parse_thing_links(item),
       stats:          parse_thing_stats(item)
     }
   end
+
+  # BGG omits the @value attribute (or leaves it "") on these fields for some
+  # item types (e.g. accessories, some rpgitem/videogame things) that don't
+  # carry player-count/playtime data at all.
+  defp safe_integer(""), do: nil
+  defp safe_integer(str), do: String.to_integer(str)
 
   defp parse_thing_links(item) do
     xpath(item, ~x"link"l)
@@ -105,7 +111,7 @@ defmodule BggApiClient.Thing do
         %{
           avg_rating:  xpath(item, ~x"statistics/ratings/average/@value"s),
           bayes_avg:   xpath(item, ~x"statistics/ratings/bayesaverage/@value"s),
-          num_ratings: xpath(item, ~x"statistics/ratings/usersrated/@value"i),
+          num_ratings: safe_integer(xpath(item, ~x"statistics/ratings/usersrated/@value"s)),
           rank:        xpath(item, ~x"statistics/ratings/ranks/rank[@name='boardgame']/@value"s)
         }
     end
